@@ -121,7 +121,8 @@ def get_driving_route(
                 "coordinates": [
                     start_coordinates,
                     end_coordinates,
-                ]
+                ],
+                "radiuses": [-1, -1],
             },
             headers={
                 "Authorization": api_key,
@@ -139,7 +140,16 @@ def get_driving_route(
         raise RuntimeError("Routing service rejected the API key (401/403 Unauthorized).")
     if response.status_code == 429:
         raise requests.exceptions.RequestException("Routing service rate limit exceeded (HTTP 429).")
-    if response.status_code >= 500:
+
+    if not response.ok:
+        try:
+            err_data = response.json()
+            ors_msg = err_data.get("error", {}).get("message") or err_data.get("message")
+        except Exception:
+            ors_msg = None
+
+        if ors_msg:
+            raise requests.exceptions.RequestException(f"Routing service error: {ors_msg}")
         raise requests.exceptions.RequestException(f"Routing upstream service error: HTTP {response.status_code}")
 
     response.raise_for_status()

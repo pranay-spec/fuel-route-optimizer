@@ -131,10 +131,11 @@ def route_optimize(request):
 
     except RequestException as exc:
         logger.error(f"Upstream routing service request failure: {exc}")
+        msg = str(exc) if "Routing service error:" in str(exc) else "The upstream routing service request failed or timed out. Please try again shortly."
         return Response(
             {
                 "status": "error",
-                "message": "The upstream routing service request failed or timed out. Please try again shortly.",
+                "message": msg,
             },
             status=status.HTTP_502_BAD_GATEWAY,
         )
