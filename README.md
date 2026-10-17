@@ -408,20 +408,7 @@ Import `Fuel_Route_Optimizer.postman_collection.json` into Postman to run pre-co
 
 ---
 
-## 9. 5-Minute Video Demonstration Script
-
-| Timestamp | Section | Key Talking Points |
-| :--- | :--- | :--- |
-| **0:00 - 0:45** | **1. Problem & Architecture** | Introduce Fuel Route Optimizer. Explain constraints: 500-mile tank range, 10 MPG, US-only, real OPIS fuel prices. Show clean Django project structure (`services/`, `models.py`, `views.py`). |
-| **0:45 - 1:30** | **2. Coordinate Solution** | Explain the coordinate problem with highway exit addresses (`I-44, EXIT 283`). Demonstrate Census Gazetteer integration, state bounding box validation, and offline caching (94.4%+ resolved, 0 live calls per station). |
-| **1:30 - 2:30** | **3. Short Journey Demo (< 500 mi)** | Send POST request in Postman for Los Angeles to Las Vegas (279.92 mi). Show `status: success`, GeoJSON LineString geometry, 27.99 gal consumed, and 0 stops needed because the vehicle starts with a full tank. |
-| **2:30 - 3:45** | **4. Long Journey Demo (> 500 mi)** | Send POST request for Los Angeles to Dallas (1,443.92 mi). Show 3 optimal fuel stops selected via Global DP (Phoenix AZ, El Paso TX, Wickett TX). Point out real CSV prices, detour miles, and leg distances all $\le 500$ miles. |
-| **3:45 - 4:30** | **5. Tests & Edge Cases** | Run `python manage.py test`. Highlight all 27 tests passing: range limits, global choice vs greedy trap, excessive detour filtering, 502 upstream errors, and single-routing-call efficiency. |
-| **4:30 - 5:00** | **6. Conclusion & Submission** | Highlight that `.env` and `db.sqlite3` are securely excluded from Git, `.env.example` is documented, and the codebase is production-ready for GitHub. |
-
----
-
-## 10. Known Limitations & Assumptions
+## 9. Known Limitations & Assumptions
 
 1. **Initial Tank State**: Assumes the vehicle departs the origin with a full 50-gallon tank (500 miles range).
 2. **Station Coordinate Granularity**: Where exact building-level coordinates are unavailable due to highway exit address descriptions, stations default to official US Census Bureau city centroids (`confidence: "city_centroid"`, `is_exact: false`). This is explicitly documented in the API response metadata.
