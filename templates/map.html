@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuel Route Optimizer | Spotter</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      padding: 3px 8px;
+      border-radius: 9999px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--accent-cyan);
+    }
+
+    /* Main Container */
+    .app-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Sidebar Control Panel */
+    .sidebar {
+      width: 440px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      z-index: 500;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-cyan);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 12px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 14px 10px 36px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+      background: #1e293b;
+    }
+
+    .presets-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .preset-pill {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #cbd5e1;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-pill:hover {
+      background: var(--accent-blue);
+      color: #fff;
+      border-color: var(--accent-blue);
+      transform: translateY(-1px);
+    }
+
+    .vehicle-specs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+      color: white;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-submit:hover {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: #1a2234;
+      border: 1px solid var(--card-border);
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-cost { color: var(--accent-emerald); }
+    .stat-miles { color: var(--accent-cyan); }
+    .stat-time { color: var(--accent-amber); }
+    .stat-stops { color: var(--accent-rose); }
+
+    /* Stops List */
+    .stops-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .stop-item {
+      background: #1a2234;
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      padding: 12px;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+
+    .stop-item:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .stop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    .stop-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stop-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .stop-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stop-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #111827;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .detail-item strong {
+      color: #fff;
+    }
+
+    /* Map View */
+    .map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #0b1120;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .loading-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(59, 130, 246, 0.2);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Leaflet popup customization */
+    .custom-popup .leaflet-popup-content-wrapper {
+      background: #1e293b;
+      color: #f8fafc;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      border: 1px solid #334155;
+    }
+    .custom-popup .leaflet-popup-tip {
+      background: #1e293b;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">⛽</div>
+      <div>
+        <div class="brand-title">Spotter Fuel Route Optimizer</div>
+      </div>
+      <span class="brand-badge">Django 5.2 • 500-Mile Range • 10 MPG</span>
+    </div>
+    <div class="nav-links">
+      <a href="/api/v1/route-optimize/" target="_blank" class="nav-link">REST API Endpoint ↗</a>
+      <a href="/health/" target="_blank" class="nav-link">System Health ↗</a>
+    </div>
+  </header>
+
+  <!-- App Body -->
+  <div class="app-container">
+    <!-- Sidebar Control Panel -->
+    <aside class="sidebar">
+      <div class="panel-section">
+        <div class="section-title">📍 Trip Itinerary</div>
+        <form id="routeForm">
+          <div class="form-group">
+            <label class="form-label" for="startInput">Start Location (USA)</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🚩</span>
+              <input type="text" id="startInput" class="form-control" value="{{ default_start }}" placeholder="e.g. Los Angeles, CA or lat, lon" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="finishInput">Destination (USA)</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🏁</span>
+              <input type="text" id="finishInput" class="form-control" value="{{ default_finish }}" placeholder="e.g. Las Vegas, NV or lat, lon" required />
+            </div>
+          </div>
+
+          <div class="presets-container">
+            <span class="preset-pill" onclick="setPreset('Los Angeles, CA', 'Las Vegas, NV')">LA → Las Vegas (270 mi)</span>
+            <span class="preset-pill" onclick="setPreset('Dallas, TX', 'Denver, CO')">Dallas → Denver (790 mi)</span>
+            <span class="preset-pill" onclick="setPreset('New York, NY', 'Miami, FL')">New York → Miami (1,280 mi)</span>
+            <span class="preset-pill" onclick="setPreset('Seattle, WA', 'San Diego, CA')">Seattle → San Diego (1,250 mi)</span>
+            <span class="preset-pill" onclick="setPreset('New York, NY', 'Los Angeles, CA')">NY → LA (2,800 mi)</span>
+          </div>
+
+          <div class="section-title" style="margin-top: 18px;">⚙️ Vehicle Constraints</div>
+          <div class="vehicle-specs-grid">
+            <div class="form-group">
+              <label class="form-label" for="rangeInput">Max Range (Miles)</label>
+              <input type="number" id="rangeInput" class="form-control" value="500" min="50" max="1500" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="mpgInput">Fuel Economy (MPG)</label>
+              <input type="number" id="mpgInput" class="form-control" value="10" min="1" max="50" />
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <span>🚀 Optimize Route & Fuel Stops</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Results Summary Panel -->
+      <div class="panel-section" id="resultsSection" style="display: none;">
+        <div class="section-title">📊 Trip & Fuel Summary</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Distance</div>
+            <div class="stat-value stat-miles" id="statDistance">0 mi</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Drive Duration</div>
+            <div class="stat-value stat-time" id="statDuration">0h 0m</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Money Spent</div>
+            <div class="stat-value stat-cost" id="statCost">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Fuel Stops</div>
+            <div class="stat-value stat-stops" id="statStops">0</div>
+          </div>
+        </div>
+
+        <div class="section-title">⛽ Optimal Fuel Stops (<span id="stopsCountBadge">0</span>)</div>
+        <div class="stops-timeline" id="stopsTimeline">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Map Viewport -->
+    <main class="map-container">
+      <div id="map"></div>
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div style="font-size: 14px; font-weight: 600; color: #38bdf8;">Finding Route & Optimal Fuel Prices...</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize Leaflet Map centered on USA
+    const map = L.map('map', {
+      zoomControl: true
+    }).setView([39.8283, -98.5795], 5);
+
+    // Esri World Street Map (free, reliable, high-resolution tiles with no localhost blocking or API key required)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, TomTom',
+      maxZoom: 19
+    }).addTo(map);
+
+    let routeLayer = null;
+    let markersLayer = L.layerGroup().addTo(map);
+
+    function createPin(color, symbol) {
+      return L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background-color:${color};width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:13px;border:2px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.5);">${symbol}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+    }
+
+    function setPreset(start, finish) {
+      document.getElementById('startInput').value = start;
+      document.getElementById('finishInput').value = finish;
+      document.getElementById('routeForm').dispatchEvent(new Event('submit'));
+    }
+
+    async function optimize() {
+      const start = document.getElementById('startInput').value.trim();
+      const finish = document.getElementById('finishInput').value.trim();
+      const max_range = parseFloat(document.getElementById('rangeInput').value) || 500;
+      const mpg = parseFloat(document.getElementById('mpgInput').value) || 10;
+
+      if (!start || !finish) return;
+
+      document.getElementById('loadingOverlay').classList.add('active');
+
+      try {
+        const response = await fetch('/api/v1/route-optimize/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            start: start,
+            finish: finish,
+            destination: finish,
+            vehicle: {
+              max_range_miles: max_range,
+              miles_per_gallon: mpg,
+              start_with_full_tank: true
+            }
+          })
+        });
+
+        const data = await response.json();
+        document.getElementById('loadingOverlay').classList.remove('active');
+
+        if (!response.ok) {
+          alert('Error: ' + (data.details || data.error || 'Failed to optimize route.'));
+          return;
+        }
+
+        renderResults(data);
+      } catch (err) {
+        document.getElementById('loadingOverlay').classList.remove('active');
+        alert('Network or server error: ' + err.message);
+      }
+    }
+
+    function renderResults(data) {
+      // Clear previous layers
+      if (routeLayer) map.removeLayer(routeLayer);
+      markersLayer.clearLayers();
+
+      const route = data.route;
+      const stops = data.fuel_stops || [];
+      const summary = data.fuel_summary || {};
+
+      // Draw Route Polyline
+      const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      routeLayer = L.polyline(coords, {
+        color: '#2563eb',
+        weight: 6,
+        opacity: 0.9,
+        lineJoin: 'round'
+      }).addTo(map);
+
+      map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+
+      // Start Marker
+      L.marker([route.start.latitude, route.start.longitude], {
+        icon: createPin('#10b981', 'A')
+      }).addTo(markersLayer).bindPopup(`
+        <div class="custom-popup" style="padding: 4px;">
+          <h4 style="margin: 0; color: #10b981;">🚩 Departure Point</h4>
+          <p style="margin: 4px 0; font-weight: bold;">${route.start.name}</p>
+        </div>
+      `);
+
+      // Finish Marker
+      L.marker([route.destination.latitude, route.destination.longitude], {
+        icon: createPin('#ef4444', 'B')
+      }).addTo(markersLayer).bindPopup(`
+        <div class="custom-popup" style="padding: 4px;">
+          <h4 style="margin: 0; color: #ef4444;">🏁 Destination</h4>
+          <p style="margin: 4px 0; font-weight: bold;">${route.destination.name}</p>
+        </div>
+      `);
+
+      // Fuel Stop Markers
+      stops.forEach(s => {
+        const marker = L.marker([s.coordinates.latitude, s.coordinates.longitude], {
+          icon: createPin('#f59e0b', s.stop_number)
+        }).addTo(markersLayer);
+
+        marker.bindPopup(`
+          <div class="custom-popup" style="padding: 6px; min-width: 200px;">
+            <div style="font-weight: 800; color: #f59e0b; font-size: 13px;">⛽ Stop #${s.stop_number}: ${s.name}</div>
+            <div style="font-size: 12px; color: #94a3b8; margin: 3px 0;">${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>
+            <div style="margin: 6px 0; padding: 4px 8px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; font-weight: 700; color: #fbbf24; font-size: 13px;">
+              $${s.retail_price_per_gallon.toFixed(3)} / gal
+            </div>
+            <div style="font-size: 12px; color: #cbd5e1;">🪣 Purchase: <strong>${s.gallons_to_purchase.toFixed(1)} gal</strong> ($${s.estimated_cost_usd.toFixed(2)})</div>
+            <div style="font-size: 12px; color: #cbd5e1;">🛣 Mile along route: <strong>${s.route_distance_miles.toFixed(1)} mi</strong></div>
+          </div>
+        `);
+      });
+
+      // Update Summary UI
+      document.getElementById('resultsSection').style.display = 'block';
+      document.getElementById('statDistance').innerText = route.distance_miles.toFixed(1) + ' mi';
+      document.getElementById('statDuration').innerText = route.duration_formatted;
+      document.getElementById('statCost').innerText = '$' + summary.total_fuel_cost_usd.toFixed(2);
+      document.getElementById('statStops').innerText = stops.length;
+      document.getElementById('stopsCountBadge').innerText = stops.length;
+
+      // Render timeline list
+      const timeline = document.getElementById('stopsTimeline');
+      timeline.innerHTML = '';
+
+      if (stops.length === 0) {
+        timeline.innerHTML = '<div style="font-size: 13px; color: #94a3b8; padding: 12px 0;">🎉 No refueling stops needed! Route is within 500-mile vehicle range on the starting tank.</div>';
+      } else {
+        stops.forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'stop-item';
+          div.innerHTML = `
+            <div class="stop-header">
+              <span class="stop-title">Stop #${s.stop_number}: ${s.name}</span>
+              <span class="stop-badge">$${s.retail_price_per_gallon.toFixed(3)}/gal</span>
+            </div>
+            <div class="stop-meta">📍 ${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>
+            <div class="stop-details-grid">
+              <div class="detail-item">Purchase: <strong>${s.gallons_to_purchase.toFixed(1)} gal</strong></div>
+              <div class="detail-item">Cost: <strong style="color:#10b981;">$${s.estimated_cost_usd.toFixed(2)}</strong></div>
+              <div class="detail-item">Mile: <strong>${s.route_distance_miles.toFixed(1)} mi</strong></div>
+              <div class="detail-item">Leg: <strong>${s.distance_from_previous_stop_miles.toFixed(1)} mi</strong></div>
+            </div>
+          `;
+          timeline.appendChild(div);
+        });
+      }
+    }
+
+    document.getElementById('routeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      optimize();
+    });
+
+    // Auto load initial route on startup
+    window.addEventListener('load', () => {
+      optimize();
+    });
+  </script>
+</body>
+</html>

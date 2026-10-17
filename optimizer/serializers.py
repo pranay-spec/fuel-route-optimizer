@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
 
+class VehicleSerializer(serializers.Serializer):
+    max_range_miles = serializers.FloatField(required=False, default=500.0, min_value=50.0, max_value=2000.0)
+    miles_per_gallon = serializers.FloatField(required=False, default=10.0, min_value=1.0, max_value=100.0)
+    start_with_full_tank = serializers.BooleanField(required=False, default=True)
+
+
 class RouteRequestSerializer(serializers.Serializer):
     start = serializers.CharField(
         required=True,
@@ -15,15 +21,20 @@ class RouteRequestSerializer(serializers.Serializer):
     )
 
     destination = serializers.CharField(
-        required=True,
-        allow_blank=False,
+        required=False,
+        allow_blank=True,
         trim_whitespace=True,
         min_length=2,
         max_length=255,
-        error_messages={
-            "required": "Destination location 'destination' is required.",
-            "blank": "Destination location 'destination' cannot be blank.",
-        },
+    )
+
+    finish = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        min_length=2,
+        max_length=255,
+        help_text="Alias for 'destination'.",
     )
 
     max_detour_miles = serializers.FloatField(
@@ -34,18 +45,21 @@ class RouteRequestSerializer(serializers.Serializer):
         help_text="Maximum allowed detour distance in miles off the primary route (default: 15.0).",
     )
 
+    vehicle = VehicleSerializer(required=False)
+
     def validate(self, attrs):
         start = attrs.get("start", "").strip()
-        destination = attrs.get("destination", "").strip()
+        destination = attrs.get("destination", "").strip() or attrs.get("finish", "").strip()
 
         if not start:
-            raise serializers.ValidationError({"start": "Start location cannot be empty."})
+            raise serializers.ValidationError({"start": "Starting location 'start' cannot be blank."})
         if not destination:
-            raise serializers.ValidationError({"destination": "Destination location cannot be empty."})
+            raise serializers.ValidationError({"destination": "Destination location 'destination' is required."})
 
         if start.lower() == destination.lower():
             raise serializers.ValidationError(
                 {"destination": "Destination location must be different from starting location."}
             )
 
+        attrs["destination"] = destination
         return attrs

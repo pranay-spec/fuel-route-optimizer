@@ -1,5 +1,6 @@
 import logging
 from requests.exceptions import RequestException
+from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -15,6 +16,11 @@ from .services.routing import (
 logger = logging.getLogger(__name__)
 
 
+def map_view(request):
+    """Serve the interactive Leaflet map dashboard."""
+    return render(request, "map.html")
+
+
 @api_view(["GET"])
 def home(request):
     """API health check and directory of available endpoints."""
@@ -24,6 +30,7 @@ def home(request):
             "message": "Fuel Route Optimizer API is running!",
             "version": "v1",
             "endpoints": {
+                "map_ui": "/",
                 "health": "/api/v1/",
                 "route_optimize": "/api/v1/route-optimize/",
             },
@@ -57,6 +64,10 @@ def route_optimize(request):
     destination = serializer.validated_data["destination"]
     max_detour = serializer.validated_data.get("max_detour_miles", 15.0)
 
+    vehicle = serializer.validated_data.get("vehicle") or {}
+    mpg = float(vehicle.get("miles_per_gallon", 10.0))
+    max_range = float(vehicle.get("max_range_miles", 500.0))
+
     try:
         # Step 2: Geocode origin and destination within the United States
         start_coords = geocode_location(start)
@@ -78,8 +89,8 @@ def route_optimize(request):
             route_distance_miles=distance_miles,
             route_coordinates=coords,
             cumulative_distances=cumulative_distances,
-            mpg=10.0,
-            max_range_miles=500.0,
+            mpg=mpg,
+            max_range_miles=max_range,
             max_detour_miles=max_detour,
         )
 
