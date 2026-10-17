@@ -1,0 +1,139 @@
+{
+  "info": {
+    "name": "Fuel Route Optimizer API",
+    "_postman_id": "c1f75d3a-3456-42bb-81d7-f4949102c77d",
+    "description": "Postman Collection for Fuel Route Optimizer REST API (Django & DRF).\nComputes driving routes, map geometry, and cost-effective fuel stops within the vehicle's 500-mile range at 10 MPG.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. API Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/v1/",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "8000",
+          "path": ["api", "v1", ""]
+        },
+        "description": "Checks the API status and returns welcome message with available endpoints."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Short Route (< 500 mi, No Stops Needed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Los Angeles, CA, USA\",\n  \"destination\": \"Las Vegas, NV, USA\"\n}"
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/v1/route-optimize/",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "8000",
+          "path": ["api", "v1", "route-optimize", ""]
+        },
+        "description": "Computes driving route from Los Angeles to Las Vegas (~280 miles). Starts full, reaches destination without refueling."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Long Route (> 500 mi, Optimized Stops)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Los Angeles, CA, USA\",\n  \"destination\": \"Dallas, TX, USA\",\n  \"max_detour_miles\": 15.0\n}"
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/v1/route-optimize/",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "8000",
+          "path": ["api", "v1", "route-optimize", ""]
+        },
+        "description": "Computes cross-country route from Los Angeles to Dallas (~1,440 miles). Finds globally cost-optimal stops within 500-mile increments."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Validation Error - Missing Destination",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Los Angeles, CA, USA\"\n}"
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/v1/route-optimize/",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "8000",
+          "path": ["api", "v1", "route-optimize", ""]
+        },
+        "description": "Expected response: HTTP 400 Bad Request with field validation errors."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Validation Error - Identical Locations",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Los Angeles, CA, USA\",\n  \"destination\": \"Los Angeles, CA, USA\"\n}"
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/v1/route-optimize/",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "8000",
+          "path": ["api", "v1", "route-optimize", ""]
+        },
+        "description": "Expected response: HTTP 400 Bad Request with validation error stating destination must differ from origin."
+      },
+      "response": []
+    }
+  ]
+}

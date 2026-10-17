@@ -1,90 +1,139 @@
-
+import logging
+from requests.exceptions import RequestException
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
-from requests.exceptions import RequestException
 
 from .serializers import RouteRequestSerializer
+from .services.optimizer import InfeasibleRouteError, optimize_fuel_stops
 from .services.routing import (
+    compute_cumulative_polyline_distances,
     geocode_location,
     get_driving_route,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @api_view(["GET"])
 def home(request):
-    return Response({
-        "message": "Fuel Route Optimizer API is running!",
-        "status": "success"
-    })
+    """API health check and directory of available endpoints."""
+    return Response(
+        {
+            "status": "success",
+            "message": "Fuel Route Optimizer API is running!",
+            "version": "v1",
+            "endpoints": {
+                "health": "/api/v1/",
+                "route_optimize": "/api/v1/route-optimize/",
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["POST"])
 def route_optimize(request):
-    # Step 1: Validate the incoming JSON.
+    """
+    Accepts starting location and destination within the United States.
+    Returns:
+    - Driving route distance, duration, and GeoJSON geometry.
+    - Cost-effective fuel stops satisfying the vehicle's 500-mile range at 10 MPG.
+    - Complete fuel consumption and purchase cost breakdown.
+    """
+    # Step 1: Validate input JSON payload
     serializer = RouteRequestSerializer(data=request.data)
-
     if not serializer.is_valid():
         return Response(
             {
                 "status": "error",
-                "errors": serializer.errors
+                "message": "Validation failed for route request parameters.",
+                "errors": serializer.errors,
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     start = serializer.validated_data["start"]
     destination = serializer.validated_data["destination"]
+    max_detour = serializer.validated_data.get("max_detour_miles", 15.0)
 
     try:
-        # Step 2: Convert place names into coordinates.
-        start_coordinates = geocode_location(start)
-        destination_coordinates = geocode_location(destination)
+        # Step 2: Geocode origin and destination within the United States
+        start_coords = geocode_location(start)
+        dest_coords = geocode_location(destination)
 
-        # Step 3: Request the driving route.
-        route = get_driving_route(
-            start_coordinates,
-            destination_coordinates
+        # Step 3: Compute driving route geometry and distance via OpenRouteService
+        route = get_driving_route(start_coords, dest_coords)
+
+        distance_miles = route["distance_miles"]
+        duration_seconds = route["duration_seconds"]
+        geometry = route["geometry"]
+
+        # Step 4: Calculate cumulative distances along route polyline
+        coords = geometry.get("coordinates", [])
+        cumulative_distances = compute_cumulative_polyline_distances(coords, distance_miles)
+
+        # Step 5: Optimize fuel stops along the route respecting 500-mile vehicle range
+        optimization_result = optimize_fuel_stops(
+            route_distance_miles=distance_miles,
+            route_coordinates=coords,
+            cumulative_distances=cumulative_distances,
+            mpg=10.0,
+            max_range_miles=500.0,
+            max_detour_miles=max_detour,
         )
 
-        # Step 4: Calculate estimated fuel consumption.
-        distance_miles = route["distance_miles"]
-        miles_per_gallon = 10
-
-        gallons_consumed = distance_miles / miles_per_gallon
-
-        # Step 5: Return route data to the client.
-        return Response({
-            "status": "success",
-            "route": {
-                "start": start,
-                "destination": destination,
-                "distance_miles": distance_miles,
-                "duration_seconds": route["duration_seconds"],
-                "geometry": route["geometry"]
+        # Step 6: Return complete structured result
+        return Response(
+            {
+                "status": "success",
+                "route": {
+                    "start": start,
+                    "destination": destination,
+                    "distance_miles": distance_miles,
+                    "duration_seconds": duration_seconds,
+                    "geometry": geometry,
+                },
+                "fuel_summary": optimization_result["fuel_summary"],
+                "fuel_stops": optimization_result["fuel_stops"],
             },
-            "fuel_summary": {
-                "miles_per_gallon": miles_per_gallon,
-                "estimated_gallons_consumed": round(
-                    gallons_consumed, 2
-                )
-            }
-        }, status=status.HTTP_200_OK)
+            status=status.HTTP_200_OK,
+        )
 
     except ValueError as exc:
-        return Response({
-            "status": "error",
-            "message": str(exc)
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "status": "error",
+                "message": str(exc),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    except RequestException:
-        return Response({
-            "status": "error",
-            "message": "The routing service request failed."
-        }, status=status.HTTP_502_BAD_GATEWAY)
+    except InfeasibleRouteError as exc:
+        return Response(
+            {
+                "status": "infeasible",
+                "message": str(exc),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    except RuntimeError:
-        return Response({
-            "status": "error",
-            "message": "The routing service is not configured correctly."
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except RequestException as exc:
+        logger.error(f"Upstream routing service request failure: {exc}")
+        return Response(
+            {
+                "status": "error",
+                "message": "The upstream routing service request failed or timed out. Please try again shortly.",
+            },
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    except RuntimeError as exc:
+        logger.error(f"Routing configuration error: {exc}")
+        return Response(
+            {
+                "status": "error",
+                "message": "The routing service is not configured correctly on the server.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

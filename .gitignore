@@ -1,5 +1,25 @@
+# Environments
 venv/
+env/
+.env
+
+# Python artifacts
 __pycache__/
 *.py[cod]
-.env
+*$py.class
+*.so
+
+# Database
 db.sqlite3
+*.sqlite3
+
+# Logs & temp files
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor configurations
+.vscode/
+.idea/
+.DS_Store
