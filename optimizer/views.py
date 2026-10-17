@@ -94,6 +94,10 @@ def route_optimize(request):
             max_detour_miles=max_detour,
         )
 
+        hours = int(duration_seconds // 3600)
+        minutes = int((duration_seconds % 3600) // 60)
+        duration_formatted = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+
         # Step 6: Return complete structured result
         return Response(
             {
@@ -103,7 +107,18 @@ def route_optimize(request):
                     "destination": destination,
                     "distance_miles": distance_miles,
                     "duration_seconds": duration_seconds,
+                    "duration_formatted": duration_formatted,
                     "geometry": geometry,
+                    "start_point": {
+                        "name": start,
+                        "latitude": start_coords[1],
+                        "longitude": start_coords[0],
+                    },
+                    "destination_point": {
+                        "name": destination,
+                        "latitude": dest_coords[1],
+                        "longitude": dest_coords[0],
+                    },
                 },
                 "fuel_summary": optimization_result["fuel_summary"],
                 "fuel_stops": optimization_result["fuel_stops"],

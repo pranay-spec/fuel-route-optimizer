@@ -169,6 +169,7 @@ def optimize_fuel_stops(
                 "estimated_gallons_consumed": gallons_consumed,
                 "total_gallons_purchased": 0.0,
                 "estimated_fuel_cost": 0.0,
+                "total_fuel_cost_usd": 0.0,
                 "stops_count": 0,
                 "accounting_note": "Route is within the 500-mile range. No refueling stops required.",
             },
@@ -293,20 +294,31 @@ def optimize_fuel_stops(
         total_gallons_purchased += gallons
         total_purchase_cost += cost
 
+        lat = node_data.get("latitude")
+        lon = node_data.get("longitude")
+
         selected_stops.append({
             "stop_number": stop_index,
             "opis_id": node_data.get("OPIS Truckstop ID"),
             "truckstop_name": node_data.get("Truckstop Name"),
+            "name": node_data.get("Truckstop Name"),
             "address": node_data.get("Address"),
             "city": node_data.get("City"),
             "state": node_data.get("State"),
             "price_per_gallon": round(price, 3),
+            "retail_price_per_gallon": round(price, 3),
             "route_mile": round(node_data["route_mile"], 2),
+            "route_distance_miles": round(node_data["route_mile"], 2),
             "detour_miles": round(node_data["detour_miles"], 2),
             "distance_from_last_stop": round(leg_dist, 2),
+            "distance_from_previous_stop_miles": round(leg_dist, 2),
             "gallons_purchased": gallons,
+            "gallons_to_purchase": gallons,
             "purchase_cost": cost,
-            "coordinates": [node_data.get("longitude"), node_data.get("latitude")],
+            "estimated_cost_usd": cost,
+            "coordinates": [lon, lat],
+            "latitude": lat,
+            "longitude": lon,
             "coordinate_confidence": node_data.get("confidence", "approximate"),
             "coordinate_source": node_data.get("source", "none"),
             "is_exact": node_data.get("is_exact", False),
@@ -326,6 +338,7 @@ def optimize_fuel_stops(
             "estimated_gallons_consumed": estimated_gallons_consumed,
             "total_gallons_purchased": round(total_gallons_purchased, 2),
             "estimated_fuel_cost": round(total_purchase_cost, 2),
+            "total_fuel_cost_usd": round(total_purchase_cost, 2),
             "stops_count": len(selected_stops),
             "accounting_note": (
                 "Vehicle begins with a full tank. At each stop, the vehicle refuels fuel consumed "

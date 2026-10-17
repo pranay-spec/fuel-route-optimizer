@@ -594,60 +594,87 @@
       const summary = data.fuel_summary || {};
 
       // Draw Route Polyline
-      const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      routeLayer = L.polyline(coords, {
-        color: '#2563eb',
-        weight: 6,
-        opacity: 0.9,
-        lineJoin: 'round'
-      }).addTo(map);
+      const coords = (route.geometry && route.geometry.coordinates) ? route.geometry.coordinates.map(c => [c[1], c[0]]) : [];
+      if (coords.length > 0) {
+        routeLayer = L.polyline(coords, {
+          color: '#2563eb',
+          weight: 6,
+          opacity: 0.9,
+          lineJoin: 'round'
+        }).addTo(map);
 
-      map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+      }
 
       // Start Marker
-      L.marker([route.start.latitude, route.start.longitude], {
-        icon: createPin('#10b981', 'A')
-      }).addTo(markersLayer).bindPopup(`
-        <div class="custom-popup" style="padding: 4px;">
-          <h4 style="margin: 0; color: #10b981;">🚩 Departure Point</h4>
-          <p style="margin: 4px 0; font-weight: bold;">${route.start.name}</p>
-        </div>
-      `);
+      const startLat = (route.start_point && route.start_point.latitude) || (route.start && route.start.latitude) || (coords.length > 0 ? coords[0][0] : null);
+      const startLon = (route.start_point && route.start_point.longitude) || (route.start && route.start.longitude) || (coords.length > 0 ? coords[0][1] : null);
+      const startName = (route.start_point && route.start_point.name) || (typeof route.start === 'string' ? route.start : (route.start && route.start.name)) || 'Departure Point';
+
+      if (startLat != null && startLon != null) {
+        L.marker([startLat, startLon], {
+          icon: createPin('#10b981', 'A')
+        }).addTo(markersLayer).bindPopup(`
+          <div class="custom-popup" style="padding: 4px;">
+            <h4 style="margin: 0; color: #10b981;">🚩 Departure Point</h4>
+            <p style="margin: 4px 0; font-weight: bold;">${startName}</p>
+          </div>
+        `);
+      }
 
       // Finish Marker
-      L.marker([route.destination.latitude, route.destination.longitude], {
-        icon: createPin('#ef4444', 'B')
-      }).addTo(markersLayer).bindPopup(`
-        <div class="custom-popup" style="padding: 4px;">
-          <h4 style="margin: 0; color: #ef4444;">🏁 Destination</h4>
-          <p style="margin: 4px 0; font-weight: bold;">${route.destination.name}</p>
-        </div>
-      `);
+      const destLat = (route.destination_point && route.destination_point.latitude) || (route.destination && route.destination.latitude) || (coords.length > 0 ? coords[coords.length - 1][0] : null);
+      const destLon = (route.destination_point && route.destination_point.longitude) || (route.destination && route.destination.longitude) || (coords.length > 0 ? coords[coords.length - 1][1] : null);
+      const destName = (route.destination_point && route.destination_point.name) || (typeof route.destination === 'string' ? route.destination : (route.destination && route.destination.name)) || route.destination || route.finish || 'Destination';
+
+      if (destLat != null && destLon != null) {
+        L.marker([destLat, destLon], {
+          icon: createPin('#ef4444', 'B')
+        }).addTo(markersLayer).bindPopup(`
+          <div class="custom-popup" style="padding: 4px;">
+            <h4 style="margin: 0; color: #ef4444;">🏁 Destination</h4>
+            <p style="margin: 4px 0; font-weight: bold;">${destName}</p>
+          </div>
+        `);
+      }
 
       // Fuel Stop Markers
       stops.forEach(s => {
-        const marker = L.marker([s.coordinates.latitude, s.coordinates.longitude], {
+        const sLat = s.latitude !== undefined ? s.latitude : (s.coordinates && s.coordinates.latitude !== undefined ? s.coordinates.latitude : (Array.isArray(s.coordinates) ? s.coordinates[1] : null));
+        const sLon = s.longitude !== undefined ? s.longitude : (s.coordinates && s.coordinates.longitude !== undefined ? s.coordinates.longitude : (Array.isArray(s.coordinates) ? s.coordinates[0] : null));
+
+        if (sLat == null || sLon == null) return;
+
+        const stopName = s.truckstop_name || s.name || 'Fuel Stop';
+        const price = s.retail_price_per_gallon !== undefined ? s.retail_price_per_gallon : (s.price_per_gallon || 0);
+        const gallons = s.gallons_to_purchase !== undefined ? s.gallons_to_purchase : (s.gallons_purchased || 0);
+        const cost = s.estimated_cost_usd !== undefined ? s.estimated_cost_usd : (s.purchase_cost || 0);
+        const mile = s.route_distance_miles !== undefined ? s.route_distance_miles : (s.route_mile || 0);
+
+        const marker = L.marker([sLat, sLon], {
           icon: createPin('#f59e0b', s.stop_number)
         }).addTo(markersLayer);
 
         marker.bindPopup(`
           <div class="custom-popup" style="padding: 6px; min-width: 200px;">
-            <div style="font-weight: 800; color: #f59e0b; font-size: 13px;">⛽ Stop #${s.stop_number}: ${s.name}</div>
+            <div style="font-weight: 800; color: #f59e0b; font-size: 13px;">⛽ Stop #${s.stop_number}: ${stopName}</div>
             <div style="font-size: 12px; color: #94a3b8; margin: 3px 0;">${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>
             <div style="margin: 6px 0; padding: 4px 8px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; font-weight: 700; color: #fbbf24; font-size: 13px;">
-              $${s.retail_price_per_gallon.toFixed(3)} / gal
+              $${Number(price).toFixed(3)} / gal
             </div>
-            <div style="font-size: 12px; color: #cbd5e1;">🪣 Purchase: <strong>${s.gallons_to_purchase.toFixed(1)} gal</strong> ($${s.estimated_cost_usd.toFixed(2)})</div>
-            <div style="font-size: 12px; color: #cbd5e1;">🛣 Mile along route: <strong>${s.route_distance_miles.toFixed(1)} mi</strong></div>
+            <div style="font-size: 12px; color: #cbd5e1;">🪣 Purchase: <strong>${Number(gallons).toFixed(1)} gal</strong> ($${Number(cost).toFixed(2)})</div>
+            <div style="font-size: 12px; color: #cbd5e1;">🛣 Mile along route: <strong>${Number(mile).toFixed(1)} mi</strong></div>
           </div>
         `);
       });
 
       // Update Summary UI
       document.getElementById('resultsSection').style.display = 'block';
-      document.getElementById('statDistance').innerText = route.distance_miles.toFixed(1) + ' mi';
-      document.getElementById('statDuration').innerText = route.duration_formatted;
-      document.getElementById('statCost').innerText = '$' + summary.total_fuel_cost_usd.toFixed(2);
+      document.getElementById('statDistance').innerText = (route.distance_miles ? Number(route.distance_miles).toFixed(1) : '0') + ' mi';
+      const durationFormatted = route.duration_formatted || (route.duration_seconds ? `${Math.floor(route.duration_seconds / 3600)}h ${Math.floor((route.duration_seconds % 3600) / 60)}m` : '0m');
+      document.getElementById('statDuration').innerText = durationFormatted;
+      const totalCost = summary.total_fuel_cost_usd !== undefined ? summary.total_fuel_cost_usd : (summary.estimated_fuel_cost || 0);
+      document.getElementById('statCost').innerText = '$' + Number(totalCost).toFixed(2);
       document.getElementById('statStops').innerText = stops.length;
       document.getElementById('stopsCountBadge').innerText = stops.length;
 
@@ -659,19 +686,26 @@
         timeline.innerHTML = '<div style="font-size: 13px; color: #94a3b8; padding: 12px 0;">🎉 No refueling stops needed! Route is within 500-mile vehicle range on the starting tank.</div>';
       } else {
         stops.forEach(s => {
+          const stopName = s.truckstop_name || s.name || 'Fuel Stop';
+          const price = s.retail_price_per_gallon !== undefined ? s.retail_price_per_gallon : (s.price_per_gallon || 0);
+          const gallons = s.gallons_to_purchase !== undefined ? s.gallons_to_purchase : (s.gallons_purchased || 0);
+          const cost = s.estimated_cost_usd !== undefined ? s.estimated_cost_usd : (s.purchase_cost || 0);
+          const mile = s.route_distance_miles !== undefined ? s.route_distance_miles : (s.route_mile || 0);
+          const leg = s.distance_from_previous_stop_miles !== undefined ? s.distance_from_previous_stop_miles : (s.distance_from_last_stop || 0);
+
           const div = document.createElement('div');
           div.className = 'stop-item';
           div.innerHTML = `
             <div class="stop-header">
-              <span class="stop-title">Stop #${s.stop_number}: ${s.name}</span>
-              <span class="stop-badge">$${s.retail_price_per_gallon.toFixed(3)}/gal</span>
+              <span class="stop-title">Stop #${s.stop_number}: ${stopName}</span>
+              <span class="stop-badge">$${Number(price).toFixed(3)}/gal</span>
             </div>
             <div class="stop-meta">📍 ${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>
             <div class="stop-details-grid">
-              <div class="detail-item">Purchase: <strong>${s.gallons_to_purchase.toFixed(1)} gal</strong></div>
-              <div class="detail-item">Cost: <strong style="color:#10b981;">$${s.estimated_cost_usd.toFixed(2)}</strong></div>
-              <div class="detail-item">Mile: <strong>${s.route_distance_miles.toFixed(1)} mi</strong></div>
-              <div class="detail-item">Leg: <strong>${s.distance_from_previous_stop_miles.toFixed(1)} mi</strong></div>
+              <div class="detail-item">Purchase: <strong>${Number(gallons).toFixed(1)} gal</strong></div>
+              <div class="detail-item">Cost: <strong style="color:#10b981;">$${Number(cost).toFixed(2)}</strong></div>
+              <div class="detail-item">Mile: <strong>${Number(mile).toFixed(1)} mi</strong></div>
+              <div class="detail-item">Leg: <strong>${Number(leg).toFixed(1)} mi</strong></div>
             </div>
           `;
           timeline.appendChild(div);
